@@ -1,61 +1,123 @@
-from tkinter import TOP, filedialog
-from tkinterdnd2 import TkinterDnD, DND_ALL
 import customtkinter as ctk
+from tkinter import filedialog
+import os
+import logging
 
-# Création de la classe principale en héritant de ctk.CTk et TkinterDnD.DnDWrapper
-class Tk(ctk.CTk, TkinterDnD.DnDWrapper):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.TkdndVersion = TkinterDnD._require(self)
+# Configuration du logger
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
-# Configuration de l'apparence de l'interface
-ctk.set_appearance_mode("dark")
+# Initialisation de l'application
+ctk.set_appearance_mode("dark")  # Définit le mode sombre
+ctk.set_default_color_theme("dark-blue")  # Thème par défaut
 
-# Fonction pour récupérer le chemin déposé
-def obtenir_chemin(event):
-    dossiers = event.data.split()  # Séparer les chemins en cas de multiple drops
-    nouveaux_chemins = "\n".join(dossiers)  # Convertir les chemins en texte
-    label_chemin.configure(text=nouveaux_chemins)  # Remplacer le texte existant par les nouveaux chemins
+class FolderSelectorApp(ctk.CTk):
+    def __init__(self):
+        super().__init__()
+        
+        # Configuration de la fenêtre principale
+        self.title("Sélectionnez un Dossier")
+        self.geometry("800x600")
+        
+        # Bouton pour sélectionner un dossier
+        self.select_button = ctk.CTkButton(self, text="Sélectionnez un dossier", command=self.select_folder)
+        self.select_button.pack(pady=20)
+        
+        # Label pour afficher le chemin du dossier sélectionné
+        self.folder_label = ctk.CTkLabel(self, text="")
+        self.folder_label.pack(pady=10)
+        
+        # Frame pour contenir les sous-dossiers et leurs fichiers avec scrollbar (initialement cachée)
+        self.subfolders_scroll_frame = ctk.CTkScrollableFrame(self)
+        # Ne pas pack ici pour ne pas l'afficher immédiatement
+        
+        # Dictionnaire pour garder une trace des sous-dossiers et de leurs frames
+        self.subfolder_frames = {}
+    
+    def select_folder(self):
+        # Ouvre une fenêtre de dialogue pour sélectionner un dossier
+        folder_path = filedialog.askdirectory()
+        if folder_path:
+            logging.debug(f"Dossier sélectionné : {folder_path}")
+            # Met à jour le label avec le chemin du dossier sélectionné
+            self.folder_label.configure(text=folder_path)
+            
+            # Afficher la subfolders_scroll_frame seulement après la sélection d'un dossier
+            self.subfolders_scroll_frame.pack(fill="both", expand=True, padx=10, pady=10)
+            
+            # Afficher les sous-dossiers
+            self.display_subfolders(folder_path)
+        else:
+            logging.debug("Aucun dossier sélectionné.")
+    
+    def display_subfolders(self, folder_path):
+        # Efface le contenu précédent de la frame scrollable
+        for widget in self.subfolders_scroll_frame.winfo_children():
+            widget.destroy()
+        
+        # Liste tous les sous-dossiers dans le dossier sélectionné
+        subfolders = [f for f in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, f))]
+        logging.debug(f"Nombre de sous-dossiers trouvés : {len(subfolders)}")
+        
+        # Mise à jour du dictionnaire de frames
+        self.subfolder_frames = {}
+        
+        for subfolder in subfolders:
+            subfolder_path = os.path.join(folder_path, subfolder)
+            logging.debug(f"Affichage du sous-dossier : {subfolder}")
+            
+            # Crée une frame pour chaque sous-dossier avec un "contour"
+            subfolder_frame = ctk.CTkFrame(self.subfolders_scroll_frame, fg_color="gray20")  # Contour de couleur
+            subfolder_frame.pack(fill="x", padx=5, pady=5)
+            
+            # Ajoute une bordure intérieure pour simuler un contour
+            inner_frame = ctk.CTkFrame(subfolder_frame, fg_color="gray30", corner_radius=5)
+            inner_frame.pack(fill="both", padx=2, pady=2, expand=True)
+            
+            # Affiche le nom du sous-dossier
+            subfolder_label = ctk.CTkLabel(inner_frame, text=subfolder)
+            subfolder_label.pack(side="left", padx=10, pady=5)
+            
+            # Bouton pour supprimer uniquement la frame
+            delete_button = ctk.CTkButton(
+                inner_frame, 
+                text="Supprimer", 
+                command=lambda sf_frame=subfolder_frame: self.delete_subfolder_frame(sf_frame),
+                fg_color="red"
+            )
+            delete_button.pack(side="right", padx=10, pady=5)
+            
+            # Ajoute le sous-dossier à la liste des frames pour le suivi
+            self.subfolder_frames[subfolder] = subfolder_frame
+            
+            # Affiche les fichiers .dxf dans chaque sous-dossier
+            self.display_dxf_files(subfolder_path, inner_frame)
+    
+    def display_dxf_files(self, subfolder_path, parent_frame):
+        # Liste tous les fichiers .dxf dans le sous-dossier
+        dxf_files = [f for f in os.listdir(subfolder_path) if f.lower().endswith('.dxf')]
+        logging.debug(f"Fichiers .dxf trouvés dans {subfolder_path} : {dxf_files}")
+        
+        for dxf_file in dxf_files:
+            # Crée une frame pour chaque fichier .dxf
+            dxf_frame = ctk.CTkFrame(parent_frame)
+            dxf_frame.pack(fill="x", padx=10, pady=2)
+            
+            # Affiche le nom du fichier .dxf
+            dxf_label = ctk.CTkLabel(dxf_frame, text=dxf_file)
+            dxf_label.pack(padx=10, pady=5)
 
-# Fonction pour choisir un dossier manuellement
-def choisir_dossier():
-    dossier_selectionne = filedialog.askdirectory()
-    if dossier_selectionne:
-        label_chemin.configure(text=dossier_selectionne)  # Remplacer le texte existant par le dossier sélectionné
+    def delete_subfolder_frame(self, subfolder_frame):
+        """Supprime uniquement la frame du sous-dossier sans affecter le dossier physique."""
+        try:
+            # Supprime la frame de l'interface
+            subfolder_frame.destroy()
+            logging.debug("Frame du sous-dossier supprimée.")
+        except Exception as e:
+            logging.error(f"Erreur lors de la suppression de la frame du sous-dossier : {e}")
 
-# Création de la fenêtre principale
-root = Tk()
-root.geometry("800x300")
-root.title("Obtenir le chemin du fichier")
-
-# Création d'une frame qui servira de zone de dépôt
-zone_depot = ctk.CTkFrame(root, width=300, height=150, border_color="white", border_width=2, corner_radius=10)
-zone_depot.pack(side=TOP, padx=10, pady=10, fill="both", expand=True)
-
-# Création d'un label à l'intérieur de la frame pour afficher le chemin déposé
-label_chemin = ctk.CTkLabel(zone_depot, text="Déposez les Dossiers ici\n\n\nOu")
-label_chemin.pack(expand=True,pady=20)
-
-# Création d'un bouton pour choisir un dossier manuellement
-bouton_selection = ctk.CTkButton(zone_depot, text="Sélectionner le Dossier", command=choisir_dossier, height=50, width=200, fg_color="Black", border_width=2)
-bouton_selection.pack(expand=True,pady=20)
-
-# Configuration de la zone de dépôt pour accepter le drag-and-drop
-zone_depot.drop_target_register(DND_ALL)
-zone_depot.dnd_bind("<<Drop>>", obtenir_chemin)
-
-# Ajout d'une nouvelle frame avec un label, une entrée et un bouton
-frame_entree = ctk.CTkFrame(root, height=100, border_color="white", border_width=2, corner_radius=10)
-frame_entree.pack(side=TOP, padx=10, pady=10, fill="both", expand=True)
-
-label_entree = ctk.CTkLabel(frame_entree, text="Entrez le texte ici :")
-label_entree.pack(side="left", padx=5, pady=5)
-
-entree = ctk.CTkEntry(frame_entree)
-entree.pack(side="left", padx=5, pady=5, fill="x", expand=True)
-
-bouton_soumettre = ctk.CTkButton(frame_entree, text="Soumettre")
-bouton_soumettre.pack(side="right", padx=5, pady=5)
-
-# Lancement de la boucle principale de l'application
-root.mainloop()
+# Lancement de l'application
+if __name__ == "__main__":
+    logging.debug("Lancement de l'application.")
+    app = FolderSelectorApp()
+    app.mainloop()
+    logging.debug("Application fermée.")
