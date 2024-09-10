@@ -39,7 +39,10 @@ class FolderSelectorApp(ctk.CTk):
         
         # Dictionnaire pour garder une trace des sous-dossiers et de leurs frames
         self.subfolder_frames = {}
-    
+        
+        # Dictionnaire pour stocker les quantités saisies par l'utilisateur
+        self.quantities = {}
+
     def select_folder(self):
         # Ouvre une fenêtre de dialogue pour sélectionner un dossier
         folder_path = filedialog.askdirectory()
@@ -117,6 +120,13 @@ class FolderSelectorApp(ctk.CTk):
             dxf_label = ctk.CTkLabel(dxf_frame, text=dxf_file)
             dxf_label.pack(side="left", padx=10, pady=5)
 
+            # Champ d'entrée pour la quantité
+            quantity_entry = ctk.CTkEntry(dxf_frame, placeholder_text="Quantité", width=80)
+            quantity_entry.pack(side="left", padx=5)
+            
+            # Stocker la quantité lorsque l'entrée change
+            quantity_entry.bind("<FocusOut>", lambda event, key=dxf_file: self.store_quantity(key, event.widget.get()))
+
             # Bouton pour ignorer le fichier .dxf
             ignore_button = ctk.CTkButton(
                 dxf_frame, 
@@ -125,6 +135,14 @@ class FolderSelectorApp(ctk.CTk):
                 fg_color="red"
             )
             ignore_button.pack(side="right", padx=10, pady=5)
+
+    def store_quantity(self, key, value):
+        """Stocke la quantité saisie pour chaque fichier .dxf."""
+        try:
+            self.quantities[key] = int(value) if value.isdigit() else 0
+            logging.debug(f"Quantité pour {key} mise à jour : {self.quantities[key]}")
+        except ValueError:
+            logging.error(f"Erreur lors de la saisie de la quantité pour {key}")
 
     def ignore_dxf_file(self, dxf_frame):
         """Supprime uniquement le label du fichier .dxf sans affecter le fichier physique."""
