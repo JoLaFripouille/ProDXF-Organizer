@@ -2,9 +2,16 @@ import customtkinter as ctk
 from tkinter import filedialog
 import os
 import logging
+import re
 
 # Configuration du logger
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Définition des patterns pour ignorer les fichiers .dxf
+patterns = [
+    re.compile(r".+_.+_qte-\d+\.dxf", re.IGNORECASE),  # Premier motif
+    re.compile(r".+_.+_qte-\d+\.dxf", re.IGNORECASE)   # Deuxième motif (identique pour exemple)
+]
 
 # Initialisation de l'application
 ctk.set_appearance_mode("dark")  # Définit le mode sombre
@@ -75,16 +82,16 @@ class FolderSelectorApp(ctk.CTk):
             
             # Affiche le nom du sous-dossier
             subfolder_label = ctk.CTkLabel(inner_frame, text=subfolder)
-            subfolder_label.pack(side="left", padx=10, pady=5)
+            subfolder_label.pack(padx=10, pady=5)
             
-            # Bouton pour supprimer uniquement la frame
-            delete_button = ctk.CTkButton(
+            # Bouton pour supprimer uniquement la frame (sous le label)
+            delete_folder_frame_button = ctk.CTkButton(
                 inner_frame, 
-                text="Supprimer", 
+                text="Supprimer ce Dossier", 
                 command=lambda sf_frame=subfolder_frame: self.delete_subfolder_frame(sf_frame),
                 fg_color="red"
             )
-            delete_button.pack(side="right", padx=10, pady=5)
+            delete_folder_frame_button.pack(padx=10, pady=5)  # Positionné en dessous du label
             
             # Ajoute le sous-dossier à la liste des frames pour le suivi
             self.subfolder_frames[subfolder] = subfolder_frame
@@ -97,14 +104,36 @@ class FolderSelectorApp(ctk.CTk):
         dxf_files = [f for f in os.listdir(subfolder_path) if f.lower().endswith('.dxf')]
         logging.debug(f"Fichiers .dxf trouvés dans {subfolder_path} : {dxf_files}")
         
-        for dxf_file in dxf_files:
+        # Filtre les fichiers à ignorer selon les patterns
+        filtered_dxf_files = [f for f in dxf_files if not any(p.search(f) for p in patterns)]
+        logging.debug(f"Fichiers .dxf affichés (non ignorés) dans {subfolder_path} : {filtered_dxf_files}")
+        
+        for dxf_file in filtered_dxf_files:
             # Crée une frame pour chaque fichier .dxf
             dxf_frame = ctk.CTkFrame(parent_frame)
             dxf_frame.pack(fill="x", padx=10, pady=2)
             
             # Affiche le nom du fichier .dxf
             dxf_label = ctk.CTkLabel(dxf_frame, text=dxf_file)
-            dxf_label.pack(padx=10, pady=5)
+            dxf_label.pack(side="left", padx=10, pady=5)
+
+            # Bouton pour ignorer le fichier .dxf
+            ignore_button = ctk.CTkButton(
+                dxf_frame, 
+                text="Ignorer", 
+                command=lambda lbl=dxf_frame: self.ignore_dxf_file(lbl),
+                fg_color="red"
+            )
+            ignore_button.pack(side="right", padx=10, pady=5)
+
+    def ignore_dxf_file(self, dxf_frame):
+        """Supprime uniquement le label du fichier .dxf sans affecter le fichier physique."""
+        try:
+            # Supprime la frame de l'interface
+            dxf_frame.destroy()
+            logging.debug("Fichier .dxf ignoré et retiré de l'affichage.")
+        except Exception as e:
+            logging.error(f"Erreur lors de l'ignorance du fichier .dxf : {e}")
 
     def delete_subfolder_frame(self, subfolder_frame):
         """Supprime uniquement la frame du sous-dossier sans affecter le dossier physique."""

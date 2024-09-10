@@ -58,7 +58,7 @@ class Tk(ctk.CTk, TkinterDnD.DnDWrapper):
             self.canvas.delete("all")  # Effacer le contenu précédent du canvas
             y_position = 10
 
-            ignore_pattern = re.compile(r'.+_.+mm_qte-\d+\.dxf$', re.IGNORECASE)
+            ignore_pattern = re.compile(r'.+_.+_qte-\d+\.dxf$', re.IGNORECASE)
             for file_path in dxf_files:
                 if not ignore_pattern.match(os.path.basename(file_path)):
                     self.canvas.create_text(10, y_position, anchor="nw", text=f"{os.path.basename(file_path)}", fill="white", font=("Arial", 10))
