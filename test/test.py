@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 import os
 import logging
 import re
@@ -43,6 +43,13 @@ class FolderSelectorApp(ctk.CTk):
         # Dictionnaire pour stocker les quantités saisies par l'utilisateur
         self.quantities = {}
 
+        # Liste des entries de quantités pour validation
+        self.quantity_entries = []
+
+        # Bouton valider (caché initialement)
+        self.validate_button = ctk.CTkButton(self, text="Valider", command=self.on_validate)
+        # Ne pas pack ici pour ne pas l'afficher immédiatement
+
     def select_folder(self):
         # Ouvre une fenêtre de dialogue pour sélectionner un dossier
         folder_path = filedialog.askdirectory()
@@ -70,6 +77,8 @@ class FolderSelectorApp(ctk.CTk):
         
         # Mise à jour du dictionnaire de frames
         self.subfolder_frames = {}
+        self.quantity_entries = []  # Réinitialiser la liste des entries
+        has_dxf_files = False  # Pour vérifier si des fichiers .dxf sont trouvés
         
         for subfolder in subfolders:
             subfolder_path = os.path.join(folder_path, subfolder)
@@ -100,9 +109,14 @@ class FolderSelectorApp(ctk.CTk):
             self.subfolder_frames[subfolder] = subfolder_frame
             
             # Affiche les fichiers .dxf dans chaque sous-dossier
-            self.display_dxf_files(subfolder_path, inner_frame)
-    
-    def display_dxf_files(self, subfolder_path, parent_frame):
+            if self.display_dxf_files(subfolder_path, inner_frame, subfolder):
+                has_dxf_files = True
+        
+        # Affiche le bouton "Valider" uniquement s'il y a des fichiers .dxf dans les sous-dossiers
+        if has_dxf_files:
+            self.validate_button.pack(side="bottom", fill="x", padx=10, pady=10)
+
+    def display_dxf_files(self, subfolder_path, parent_frame, subfolder_name):
         # Liste tous les fichiers .dxf dans le sous-dossier
         dxf_files = [f for f in os.listdir(subfolder_path) if f.lower().endswith('.dxf')]
         logging.debug(f"Fichiers .dxf trouvés dans {subfolder_path} : {dxf_files}")
@@ -111,6 +125,12 @@ class FolderSelectorApp(ctk.CTk):
         filtered_dxf_files = [f for f in dxf_files if not any(p.search(f) for p in patterns)]
         logging.debug(f"Fichiers .dxf affichés (non ignorés) dans {subfolder_path} : {filtered_dxf_files}")
         
+        if filtered_dxf_files:
+            # Indique qu'il y a des fichiers .dxf à afficher
+            has_files = True
+        else:
+            has_files = False
+
         for dxf_file in filtered_dxf_files:
             # Crée une frame pour chaque fichier .dxf
             dxf_frame = ctk.CTkFrame(parent_frame)
@@ -125,7 +145,10 @@ class FolderSelectorApp(ctk.CTk):
             quantity_entry.pack(side="left", padx=5)
             
             # Stocker la quantité lorsque l'entrée change
-            quantity_entry.bind("<FocusOut>", lambda event, key=dxf_file: self.store_quantity(key, event.widget.get()))
+            quantity_entry.bind("<FocusOut>", lambda event, key=(subfolder_name, dxf_file): self.store_quantity(key, event.widget.get()))
+
+            # Ajouter l'entry à la liste pour validation ultérieure
+            self.quantity_entries.append(((subfolder_name, dxf_file), quantity_entry))
 
             # Bouton pour ignorer le fichier .dxf
             ignore_button = ctk.CTkButton(
@@ -135,6 +158,8 @@ class FolderSelectorApp(ctk.CTk):
                 fg_color="red"
             )
             ignore_button.pack(side="right", padx=10, pady=5)
+        
+        return has_files
 
     def store_quantity(self, key, value):
         """Stocke la quantité saisie pour chaque fichier .dxf."""
@@ -161,6 +186,29 @@ class FolderSelectorApp(ctk.CTk):
             logging.debug("Frame du sous-dossier supprimée.")
         except Exception as e:
             logging.error(f"Erreur lors de la suppression de la frame du sous-dossier : {e}")
+
+    def deselect_all_entries(self):
+        """Désélectionne toutes les entrées pour forcer la mise à jour des quantités."""
+        self.focus()  # Déplace le focus sur la fenêtre principale pour forcer les entries à perdre le focus
+
+    def on_validate(self):
+        """Vérifie que toutes les quantités ont été remplies correctement avant de valider."""
+        self.deselect_all_entries()  # Forcer la mise à jour de toutes les entrées
+        
+        all_valid = True
+        for (folder_name, filename), entry in self.quantity_entries:
+            value = entry.get()
+            if not value.isdigit() or int(value) == 0:
+                all_valid = False
+                break
+        
+        if all_valid:
+            # Afficher les quantités associées à chaque fichier .dxf avec leur dossier
+            for (folder_name, filename), quantity in self.quantities.items():
+                print(f"Dossier: {folder_name}, Fichier: {filename}, Quantité: {quantity}")
+        else:
+            # Afficher un message d'erreur
+            messagebox.showerror("Erreur", "Toutes les quantités doivent être renseignées avec des chiffres non nuls.")
 
 # Lancement de l'application
 if __name__ == "__main__":
