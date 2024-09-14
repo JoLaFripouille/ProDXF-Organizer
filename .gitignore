@@ -1,0 +1,6 @@
+# Fichiers sensibles
+API_KEY.env
+# Autres fichiers inutile à ignorer
+*.bak
+*.swp
+*.tmp

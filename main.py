@@ -4,7 +4,9 @@ import os
 import logging
 import re
 import webbrowser
-import win32com.client  # Bibliothèque pour contrôler Outlook via COM
+import win32com.client  
+import json  # Pour gérer les fichiers JSON
+import Generate_DXF
 
 # Configuration du logger
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -15,6 +17,25 @@ patterns = [
     re.compile(r".+_.+_qte-\d+\.dxf", re.IGNORECASE)   # Deuxième motif (identique pour exemple)
 ]
 
+# Chemin du fichier JSON pour la configuration
+CONFIG_PATH = "JSON/FormatBlocks.json"
+
+# Fonction pour charger la configuration à partir du JSON
+def load_config():
+    if os.path.exists(CONFIG_PATH):
+        with open(CONFIG_PATH, "r") as file:
+            return json.load(file)
+    else:
+        return {"prefix": "DEV", "suffix": "TL"}  # Valeurs par défaut si le fichier n'existe pas
+
+# Fonction pour enregistrer la configuration dans le JSON
+def save_config(config):
+    with open(CONFIG_PATH, "w") as file:
+        json.dump(config, file, indent=4)
+
+# Chargement de la configuration au démarrage
+config = load_config()
+
 # Initialisation de l'application
 ctk.set_appearance_mode("dark")  # Définit le mode sombre
 ctk.set_default_color_theme("dark-blue")  # Thème par défaut
@@ -24,41 +45,137 @@ class FolderSelectorApp(ctk.CTk):
         super().__init__()
         
         # Configuration de la fenêtre principale
-        self.title("Sélectionnez un Dossier")
-        self.geometry("800x600")
+        self.title("ProDXF Organizer")
+        self.geometry("1000x600")
+
+        # Configuration de la grille principale
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(1, weight=1)
+
+        # Frame latérale pour les boutons d'onglets
+        self.sidebar_frame = ctk.CTkFrame(self, fg_color="#1a1a1a", corner_radius=10)
+        self.sidebar_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
+
+        # Boutons pour simuler des onglets dans la sidebar avec largeur augmentée
+        self.button_onglet1 = ctk.CTkButton(self.sidebar_frame, text="Onglet 1", command=self.show_frame1, corner_radius=10, fg_color="black", text_color="white", border_color="white", border_width=2, width=220, height=40)
+        self.button_onglet1.pack(padx=10, pady=10)
+
+        self.button_onglet2 = ctk.CTkButton(self.sidebar_frame, text="Onglet 2", command=self.show_frame2, corner_radius=10, fg_color="#1a1a1a", text_color="white", width=220, height=40)
+        self.button_onglet2.pack(padx=10, pady=10)
+
+        self.button_onglet3 = ctk.CTkButton(self.sidebar_frame, text="Configuration", command=self.show_frame3, corner_radius=10, fg_color="#1a1a1a", text_color="white", width=220, height=40)
+        self.button_onglet3.pack(padx=10, pady=10)
         
-        # Bouton pour sélectionner un dossier
-        self.select_button = ctk.CTkButton(self, text="Sélectionnez un dossier", command=self.select_folder)
+        # Frames pour chaque "onglet"
+        self.frame1 = ctk.CTkFrame(self, fg_color="black", corner_radius=10)
+        self.frame2 = ctk.CTkFrame(self, fg_color="black", corner_radius=10)
+        self.frame3 = ctk.CTkFrame(self, fg_color="black", corner_radius=10)
+        
+        self.frame1.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.frame2.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.frame3.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        
+        # Affichage initial du premier onglet
+        self.show_frame1()
+
+        # Contenu de la première frame (Onglet 1)
+        self.select_button = ctk.CTkButton(self.frame1, text="Sélectionnez un dossier", command=self.select_folder, corner_radius=10)
         self.select_button.pack(pady=20)
-        
-        # Label pour afficher le chemin du dossier sélectionné
-        self.folder_label = ctk.CTkLabel(self, text="")
+
+        self.folder_label = ctk.CTkLabel(self.frame1, text="")
         self.folder_label.pack(pady=10)
-        
-        # Frame pour contenir les sous-dossiers et leurs fichiers avec scrollbar (initialement cachée)
-        self.subfolders_scroll_frame = ctk.CTkScrollableFrame(self)
-        
-        # Dictionnaire pour garder une trace des sous-dossiers et de leurs frames
-        self.subfolder_frames = {}
-        
-        # Dictionnaire pour stocker les quantités saisies par l'utilisateur
-        self.quantities = {}
 
-        # Liste des entries de quantités pour validation
-        self.quantity_entries = []
-
-        # Bouton valider (caché initialement)
-        self.validate_button = ctk.CTkButton(self, text="Valider", command=self.on_validate)
+        self.subfolders_scroll_frame = ctk.CTkScrollableFrame(self.frame1, corner_radius=10)
         
-        # Bouton pour sélectionner le client de messagerie (Gmail par défaut)
-        self.email_client_button = ctk.CTkButton(self, text="Gmail", fg_color="red", command=self.toggle_email_client)
-        self.email_client_button.place(x=740, y=10, anchor="ne")  # Positionner en haut à droite
+        self.email_client_button = ctk.CTkButton(
+            self.frame1,
+            text="Gmail",
+            fg_color="red",
+            command=self.toggle_email_client,
+            corner_radius=10
+        )
+        self.email_client_button.pack(anchor="ne", padx=10, pady=10)
+
+        self.validate_button = ctk.CTkButton(self.frame1, text="Valider", command=self.on_validate, corner_radius=10)
+        
+        # Contenu de la deuxième frame (Onglet 2)
+        self.select_dwg_button = ctk.CTkButton(self.frame2, text="Sélectionnez un fichier DWG", command=self.select_dwg_file, corner_radius=10)
+        self.select_dwg_button.pack(pady=20)
+
+        self.dwg_file_label = ctk.CTkLabel(self.frame2, text="")
+        self.dwg_file_label.pack(pady=10)
+
+        # Ajout du nouveau bouton dans l'onglet 2 avec les dimensions spécifiées et le style
+        self.big_button = ctk.CTkButton(
+            self.frame2, 
+            text="Générer les fichiers .dxf", 
+            corner_radius=20, 
+            width=270, 
+            height=110, 
+            fg_color="black", 
+            border_color="white", 
+            border_width=2,
+            font=("Helvetica", 22),  # Utilisation du paramètre correct pour la police
+            command=self.generate_dxf
+        )
+
+        # Contenu de la troisième frame (Configuration)
+        self.entry_prefix = ctk.CTkEntry(self.frame3, placeholder_text="Préfixe", width=200, corner_radius=10)
+        self.entry_prefix.insert(0, config["prefix"])  # Charger la valeur par défaut
+        self.entry_prefix.pack(side="left", pady=10, padx=5)
+
+        self.save_prefix_button = ctk.CTkButton(self.frame3, text="Enregistrer", command=self.save_prefix, corner_radius=10)
+        self.save_prefix_button.pack(side="left", pady=10, padx=5)
+
+        self.entry_suffix = ctk.CTkEntry(self.frame3, placeholder_text="Suffixe", width=200, corner_radius=10)
+        self.entry_suffix.insert(0, config["suffix"])  # Charger la valeur par défaut
+        self.entry_suffix.pack(side="left", pady=10, padx=5)
+
+        self.save_suffix_button = ctk.CTkButton(self.frame3, text="Enregistrer", command=self.save_suffix, corner_radius=10)
+        self.save_suffix_button.pack(side="left", pady=10, padx=5)
 
         # Variables pour les informations extraites du chemin
+        self.subfolder_frames = {}
+        self.quantities = {}
+        self.quantity_entries = []
         self.client_name = ""
         self.project_number = ""
         self.project_name = ""
         self.email_client = "Gmail"  # Par défaut, Gmail est sélectionné
+        self.dwg_file = ""  # Variable pour stocker le chemin du fichier DWG sélectionné
+
+    def save_prefix(self):
+        """Enregistre le préfixe dans le fichier JSON."""
+        config["prefix"] = self.entry_prefix.get()
+        save_config(config)
+        messagebox.showinfo("Enregistrement", "Le préfixe a été enregistré avec succès.")
+
+    def save_suffix(self):
+        """Enregistre le suffixe dans le fichier JSON."""
+        config["suffix"] = self.entry_suffix.get()
+        save_config(config)
+        messagebox.showinfo("Enregistrement", "Le suffixe a été enregistré avec succès.")
+
+    def show_frame1(self):
+        """Affiche la première frame et cache les autres."""
+        self.frame1.tkraise()
+        self.button_onglet1.configure(fg_color="black", text_color="white", border_color="white", border_width=2)
+        self.button_onglet2.configure(fg_color="#1a1a1a", text_color="white", border_width=0)
+        self.button_onglet3.configure(fg_color="#1a1a1a", text_color="white", border_width=0)
+
+    def show_frame2(self):
+        """Affiche la seconde frame et cache les autres."""
+        self.frame2.tkraise()
+        self.button_onglet2.configure(fg_color="black", text_color="white", border_color="white", border_width=2)
+        self.button_onglet1.configure(fg_color="#1a1a1a", text_color="white", border_width=0)
+        self.button_onglet3.configure(fg_color="#1a1a1a", text_color="white", border_width=0)
+
+    def show_frame3(self):
+        """Affiche la troisième frame (Configuration) et cache les autres."""
+        self.frame3.tkraise()
+        self.button_onglet3.configure(fg_color="black", text_color="white", border_color="white", border_width=2)
+        self.button_onglet1.configure(fg_color="#1a1a1a", text_color="white", border_width=0)
+        self.button_onglet2.configure(fg_color="#1a1a1a", text_color="white", border_width=0)
 
     def toggle_email_client(self):
         """Change le client de messagerie entre Gmail et Outlook."""
@@ -70,7 +187,7 @@ class FolderSelectorApp(ctk.CTk):
             self.email_client_button.configure(text="Gmail", fg_color="red")
 
     def select_folder(self):
-        # Ouvre une fenêtre de dialogue pour sélectionner un dossier
+        """Ouvre une fenêtre de dialogue pour sélectionner un dossier."""
         folder_path = filedialog.askdirectory()
         if folder_path:
             logging.debug(f"Dossier sélectionné : {folder_path}")
@@ -80,7 +197,19 @@ class FolderSelectorApp(ctk.CTk):
             self.display_subfolders(folder_path)
         else:
             logging.debug("Aucun dossier sélectionné.")
-    
+
+    def select_dwg_file(self):
+        """Ouvre une fenêtre de dialogue pour sélectionner un fichier DWG."""
+        file_path = filedialog.askopenfilename(filetypes=[("DWG files", "*.dwg")])
+        if file_path:
+            logging.debug(f"Fichier DWG sélectionné : {file_path}")
+            self.dwg_file = file_path
+            self.dwg_file_label.configure(text=file_path)
+            self.big_button.pack(pady=20)  # Affiche le bouton quand un fichier est sélectionné
+        else:
+            logging.debug("Aucun fichier DWG sélectionné.")
+            self.big_button.pack_forget()  # Cache le bouton si aucun fichier n'est sélectionné
+
     def extract_project_info(self, folder_path):
         """Extrait le nom du client, le numéro d'affaire et le nom du projet depuis le chemin du dossier."""
         path_parts = folder_path.split(os.sep)
@@ -102,6 +231,7 @@ class FolderSelectorApp(ctk.CTk):
             self.project_name = ""
 
     def display_subfolders(self, folder_path):
+        """Affiche les sous-dossiers du dossier sélectionné."""
         for widget in self.subfolders_scroll_frame.winfo_children():
             widget.destroy()
         
@@ -116,10 +246,10 @@ class FolderSelectorApp(ctk.CTk):
             subfolder_path = os.path.join(folder_path, subfolder)
             logging.debug(f"Affichage du sous-dossier : {subfolder}")
             
-            subfolder_frame = ctk.CTkFrame(self.subfolders_scroll_frame, fg_color="gray20")
+            subfolder_frame = ctk.CTkFrame(self.subfolders_scroll_frame, fg_color="gray20", corner_radius=10)
             subfolder_frame.pack(fill="x", padx=5, pady=5)
             
-            inner_frame = ctk.CTkFrame(subfolder_frame, fg_color="gray30", corner_radius=5)
+            inner_frame = ctk.CTkFrame(subfolder_frame, fg_color="gray30", corner_radius=10)
             inner_frame.pack(fill="both", padx=2, pady=2, expand=True)
             
             subfolder_label = ctk.CTkLabel(inner_frame, text=subfolder)
@@ -129,7 +259,8 @@ class FolderSelectorApp(ctk.CTk):
                 inner_frame, 
                 text="Supprimer ce Dossier", 
                 command=lambda sf_frame=subfolder_frame: self.delete_subfolder_frame(sf_frame),
-                fg_color="red"
+                fg_color="red",
+                corner_radius=10
             )
             delete_folder_frame_button.pack(padx=10, pady=5)
             
@@ -142,6 +273,7 @@ class FolderSelectorApp(ctk.CTk):
             self.validate_button.pack(side="bottom", fill="x", padx=10, pady=10)
 
     def display_dxf_files(self, subfolder_path, parent_frame, subfolder_name):
+        """Affiche les fichiers DXF dans le sous-dossier sélectionné."""
         dxf_files = [f for f in os.listdir(subfolder_path) if f.lower().endswith('.dxf')]
         logging.debug(f"Fichiers .dxf trouvés dans {subfolder_path} : {dxf_files}")
         
@@ -151,13 +283,13 @@ class FolderSelectorApp(ctk.CTk):
         has_files = bool(filtered_dxf_files)
 
         for dxf_file in filtered_dxf_files:
-            dxf_frame = ctk.CTkFrame(parent_frame)
+            dxf_frame = ctk.CTkFrame(parent_frame, corner_radius=10)
             dxf_frame.pack(fill="x", padx=10, pady=2)
             
             dxf_label = ctk.CTkLabel(dxf_frame, text=dxf_file)
             dxf_label.pack(side="left", padx=10, pady=5)
 
-            quantity_entry = ctk.CTkEntry(dxf_frame, placeholder_text="Quantité", width=80)
+            quantity_entry = ctk.CTkEntry(dxf_frame, placeholder_text="Quantité", width=80, corner_radius=10)
             quantity_entry.pack(side="left", padx=5)
             
             # Stocker chaque entry avec le nom du fichier et du dossier
@@ -167,7 +299,8 @@ class FolderSelectorApp(ctk.CTk):
                 dxf_frame, 
                 text="Ignorer", 
                 command=lambda lbl=dxf_frame, key=(subfolder_name, dxf_file, subfolder_path): self.ignore_dxf_file(lbl, key),
-                fg_color="red"
+                fg_color="red",
+                corner_radius=10
             )
             ignore_button.pack(side="right", padx=10, pady=5)
         
@@ -272,6 +405,16 @@ class FolderSelectorApp(ctk.CTk):
             self.open_gmail(email_subject, email_body)
         else:
             self.open_outlook(email_subject, email_body)
+
+    def generate_dxf(self):
+        """Fonction pour générer des fichiers DXF."""
+        if self.dwg_file:
+            logging.debug(f"Génération des fichiers DXF à partir de {self.dwg_file}...")
+            prefix = config["prefix"]  # Utilise le préfixe depuis la configuration
+            suffix = config["suffix"]  # Utilise le suffixe depuis la configuration
+            Generate_DXF.process_dwg(self.dwg_file, prefix, suffix)
+        else:
+            messagebox.showerror("Erreur", "Veuillez sélectionner un fichier DWG avant de générer les fichiers DXF.")
 
 # Lancement de l'application
 if __name__ == "__main__":
