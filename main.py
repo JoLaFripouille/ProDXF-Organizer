@@ -7,6 +7,7 @@ import webbrowser
 import win32com.client  
 import json  # Pour gérer les fichiers JSON
 import Generate_DXF
+import time  # Pour simuler la progression
 
 # Configuration du logger
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -118,6 +119,10 @@ class FolderSelectorApp(ctk.CTk):
             font=("Helvetica", 22),  # Utilisation du paramètre correct pour la police
             command=self.generate_dxf
         )
+        self.big_button.pack(pady=20)
+
+        # Barre de progression pour la génération des fichiers DXF
+        self.progress_bar = ctk.CTkProgressBar(self.frame2, width=400, height=30, border_width=2, fg_color="#1a1a1a")
 
         # Contenu de la troisième frame (Configuration)
         self.entry_prefix = ctk.CTkEntry(self.frame3, placeholder_text="Préfixe", width=200, corner_radius=10)
@@ -406,13 +411,34 @@ class FolderSelectorApp(ctk.CTk):
         else:
             self.open_outlook(email_subject, email_body)
 
+
     def generate_dxf(self):
-        """Fonction pour générer des fichiers DXF."""
+        """Fonction pour générer des fichiers DXF avec une barre de progression."""
         if self.dwg_file:
             logging.debug(f"Génération des fichiers DXF à partir de {self.dwg_file}...")
             prefix = config["prefix"]  # Utilise le préfixe depuis la configuration
             suffix = config["suffix"]  # Utilise le suffixe depuis la configuration
+
+            # Cache le bouton et affiche la barre de progression
+            self.big_button.pack_forget()  
+            self.progress_bar.set(0)  # Réinitialise la barre de progression
+            self.progress_bar.pack()  # Affiche la barre de progression
+            self.update()  # Force la mise à jour de l'interface
+
+            # Simulation de progression (à remplacer par la progression réelle de votre génération DXF)
+            for i in range(1, 11):
+                self.progress_bar.set(i / 10)  # Met à jour la barre de progression
+                self.update_idletasks()  # Actualise l'interface pendant la progression
+                time.sleep(0.5)  # Simule une étape de traitement
+
+            # Appel de la fonction de génération des fichiers DXF
             Generate_DXF.process_dwg(self.dwg_file, prefix, suffix)
+            messagebox.showinfo("Succès", "Les fichiers DXF ont été générés avec succès.")
+
+            # Cache la barre de progression et réaffiche le bouton après le traitement
+            self.progress_bar.pack_forget()  
+            self.big_button.pack(pady=20)  
+            self.update()  # Met à jour l'affichage pour réapparaître le bouton
         else:
             messagebox.showerror("Erreur", "Veuillez sélectionner un fichier DWG avant de générer les fichiers DXF.")
 
