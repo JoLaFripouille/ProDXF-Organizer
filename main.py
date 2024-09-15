@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, PhotoImage 
 import os
 import logging
 import re
@@ -105,7 +105,11 @@ class FolderSelectorApp(ctk.CTk):
 
         # Configuration de la fenêtre principale
         self.title("ProDXF Organizer")
-        self.geometry("1000x600")
+        self.geometry("1000x680")
+
+        # Load images for Gmail and Outlook
+        self.gmail_image = PhotoImage(file="asset/img/gmail.png")
+        self.outlook_image = PhotoImage(file="asset/img/outlook.png")
 
         # Configuration de la grille principale
         self.grid_rowconfigure(0, weight=1)
@@ -116,13 +120,13 @@ class FolderSelectorApp(ctk.CTk):
         self.sidebar_frame.grid(row=0, column=0, sticky="ns", padx=10, pady=10)
 
         # Boutons pour simuler des onglets dans la sidebar
-        self.button_onglet1 = ctk.CTkButton(self.sidebar_frame, text="Onglet 1", command=self.show_frame1, corner_radius=DEFAULT_CORNER_RADIUS, fg_color="black", text_color="white", border_color="white", border_width=2, width=220, height=40)
+        self.button_onglet1 = ctk.CTkButton(self.sidebar_frame, text="Envoyer des fichiers DXF", command=self.show_frame1, font=("Helvetica", 20), corner_radius=DEFAULT_CORNER_RADIUS, fg_color="black", text_color="white", border_color="white", border_width=2, width=260, height=60)
         self.button_onglet1.pack(padx=10, pady=10)
 
-        self.button_onglet2 = ctk.CTkButton(self.sidebar_frame, text="Onglet 2", command=self.show_frame2, corner_radius=DEFAULT_CORNER_RADIUS, fg_color="#1a1a1a", text_color="white", width=220, height=40)
+        self.button_onglet2 = ctk.CTkButton(self.sidebar_frame, text="Generer des fichiers DXF", command=self.show_frame2, font=("Helvetica", 20), corner_radius=DEFAULT_CORNER_RADIUS, fg_color="#1a1a1a", text_color="white", width=260, height=60)
         self.button_onglet2.pack(padx=10, pady=10)
 
-        self.button_onglet3 = ctk.CTkButton(self.sidebar_frame, text="Configuration", command=self.show_frame3, corner_radius=DEFAULT_CORNER_RADIUS, fg_color="#1a1a1a", text_color="white", width=220, height=40)
+        self.button_onglet3 = ctk.CTkButton(self.sidebar_frame, text="Configuration", command=self.show_frame3, font=("Helvetica", 20), corner_radius=DEFAULT_CORNER_RADIUS, fg_color="#1a1a1a", text_color="white", width=260, height=60)
         self.button_onglet3.pack(padx=10, pady=10)
 
         # Frames pour chaque "onglet"
@@ -134,11 +138,15 @@ class FolderSelectorApp(ctk.CTk):
         self.frame2.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
         self.frame3.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
 
+        # Ajout d'une scrollable frame dans la frame3
+        self.scrollable_frame = ctk.CTkScrollableFrame(self.frame3, fg_color="black", corner_radius=DEFAULT_CORNER_RADIUS)
+        self.scrollable_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
         # Affichage initial du premier onglet
         self.show_frame1()
 
         # Contenu de la première frame (Onglet 1)
-        self.select_button = ctk.CTkButton(self.frame1, text="Sélectionnez un dossier", command=self.select_folder, corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT)
+        self.select_button = ctk.CTkButton(self.frame1, text="Sélectionnez un dossier", command=self.select_folder, font=("Helvetica", 20), corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT*1.5)
         self.select_button.pack(pady=20)
 
         self.folder_label = ctk.CTkLabel(self.frame1, text="")
@@ -146,20 +154,24 @@ class FolderSelectorApp(ctk.CTk):
 
         self.subfolders_scroll_frame = ctk.CTkScrollableFrame(self.frame1, corner_radius=DEFAULT_CORNER_RADIUS)
 
+        # Initialize the button with the default client image
+        self.email_client = default_client
         self.email_client_button = ctk.CTkButton(
             self.frame1,
-            text=default_client,
-            fg_color="red" if default_client == "Gmail" else "blue",
+            image=self.gmail_image if self.email_client == "Gmail" else self.outlook_image,
             command=self.toggle_email_client,
-            corner_radius=DEFAULT_CORNER_RADIUS,
-            height=DEFAULT_HEIGHT
+            corner_radius=2,
+            hover=False,
+            height=DEFAULT_HEIGHT,
+            fg_color='black',
+            text=""  # Hide text to only show the image
         )
         self.email_client_button.pack(anchor="ne", padx=10, pady=10)
-
+        
         self.validate_button = ctk.CTkButton(self.frame1, text="Valider", command=self.on_validate, corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT)
 
         # Contenu de la deuxième frame (Onglet 2)
-        self.select_dwg_button = ctk.CTkButton(self.frame2, text="Sélectionnez un fichier DWG", command=self.select_dwg_file, corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT)
+        self.select_dwg_button = ctk.CTkButton(self.frame2, text="Sélectionnez un fichier DWG", command=self.select_dwg_file, font=("Helvetica", 20), corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT*1.5)
         self.select_dwg_button.pack(pady=20)
 
         self.dwg_file_label = ctk.CTkLabel(self.frame2, text="")
@@ -182,8 +194,8 @@ class FolderSelectorApp(ctk.CTk):
         self.progress_bar = ctk.CTkProgressBar(self.frame2, width=400)
         self.progress_bar.set(0)
 
-        # Contenu de la troisième frame (Configuration)
-        self.config_prefix_suffix_frame = ctk.CTkFrame(self.frame3, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
+        # Contenu de la troisième frame (Configuration) déplacé vers scrollable_frame
+        self.config_prefix_suffix_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
         self.config_prefix_suffix_frame.pack(fill="x", padx=10, pady=10)
 
         self.entry_prefix = ctk.CTkEntry(self.config_prefix_suffix_frame, placeholder_text="Préfixe", width=200, corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT, justify="center")
@@ -201,7 +213,7 @@ class FolderSelectorApp(ctk.CTk):
         self.save_suffix_button.pack(side="left", pady=10, padx=5)
 
         # Frame pour la gestion de la clé API
-        self.config_api_frame = ctk.CTkFrame(self.frame3, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
+        self.config_api_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
         self.config_api_frame.pack(fill="x", padx=10, pady=10)
 
         self.entry_api_key = ctk.CTkEntry(self.config_api_frame, placeholder_text="Clé API", width=400, corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT)
@@ -216,7 +228,7 @@ class FolderSelectorApp(ctk.CTk):
         self.visit_api_button.pack(pady=10, padx=5)
 
         # Frame pour la configuration de l'adresse email du destinataire
-        self.config_email_frame = ctk.CTkFrame(self.frame3, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
+        self.config_email_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
         self.config_email_frame.pack(fill="x", padx=10, pady=10)
 
         self.entry_email = ctk.CTkEntry(self.config_email_frame, placeholder_text="Email destinataire", width=400, corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT, justify="center")
@@ -227,7 +239,7 @@ class FolderSelectorApp(ctk.CTk):
         self.save_email_button.pack(pady=10, padx=5)
 
         # Frame pour la configuration du mode d'envoi par défaut (Gmail ou Outlook)
-        self.config_client_frame = ctk.CTkFrame(self.frame3, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
+        self.config_client_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
         self.config_client_frame.pack(fill="x", padx=10, pady=10)
 
         self.entry_client = ctk.CTkEntry(self.config_client_frame, placeholder_text="Client (Gmail/Outlook)", width=400, corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT, justify="center")
@@ -238,8 +250,34 @@ class FolderSelectorApp(ctk.CTk):
         self.save_client_button.pack(pady=10, padx=5)
 
         # Frame scrollable pour les outils AutoCAD
-        self.tools_frame = ctk.CTkScrollableFrame(self.frame3, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
+        self.tools_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
         self.tools_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Frame for Autolisp project link
+        self.autolisp_link_frame = ctk.CTkFrame(self.scrollable_frame, fg_color="gray20", corner_radius=DEFAULT_CORNER_RADIUS)
+        self.autolisp_link_frame.pack(fill="x", padx=10, pady=10)
+
+        # Label for the Autolisp project link
+        self.autolisp_label = ctk.CTkLabel(self.autolisp_link_frame, text="Lien du projet Autolisp ICI", font=("Helvetica", 16))
+        self.autolisp_label.pack(side="left", padx=10, pady=10)
+
+        # Load the GitHub image
+        self.github_image = PhotoImage(file="asset/img/github.png")
+
+        # Button to open the GitHub link
+        self.github_button = ctk.CTkButton(
+            self.autolisp_link_frame,
+            image=self.github_image,
+            command=lambda: webbrowser.open("https://github.com/JoLaFripouille/AutoLisp"),
+            corner_radius=25,
+            width=200,
+            height=50,
+            border_width=2,
+            fg_color="#151b23",
+            text="",  # Hide text to only show the image
+            hover=True  # Disable hover animation if needed
+        )
+        self.github_button.pack(side="left", padx=10, pady=10)
 
         # Chargement dynamique des outils AutoCAD depuis le JSON
         self.load_acad_tools_ui()
@@ -266,8 +304,20 @@ class FolderSelectorApp(ctk.CTk):
             tool_description_label = ctk.CTkLabel(tool_frame, text=tool["description"])
             tool_description_label.grid(row=1, column=0, padx=10, pady=5, sticky="w")
 
-            download_button = ctk.CTkButton(tool_frame, text="Télécharger", command=lambda url=tool["url"], name=tool["name"]: self.download_lisp(url, name), corner_radius=DEFAULT_CORNER_RADIUS, height=DEFAULT_HEIGHT)
-            download_button.grid(row=0, column=1, padx=10, pady=5)
+            # Configure the tool_frame's grid to have an empty column that will push the button to the right
+            tool_frame.grid_columnconfigure(1, weight=1)
+
+            download_button = ctk.CTkButton(
+                tool_frame, 
+                text="Télécharger", 
+                command=lambda url=tool["url"], name=tool["name"]: self.download_lisp(url, name), 
+                corner_radius=DEFAULT_CORNER_RADIUS, 
+                height=DEFAULT_HEIGHT
+            )
+            download_button.grid(row=0, column=2, padx=10, pady=5, sticky="e")
+
+
+
 
     def download_lisp(self, url, name):
         """Télécharge le script Lisp depuis l'URL spécifiée."""
@@ -490,21 +540,26 @@ class FolderSelectorApp(ctk.CTk):
         email_content += "\nCordialement."
         return email_content
 
+    # Function to open Gmail with the recipient email pre-filled
     def open_gmail(self, subject, body):
-        """Ouvre un brouillon dans Gmail avec le sujet et le corps pré-remplis."""
-        body = body.replace('\n', '%0A')  # Encodage des sauts de ligne pour l'URL
-        subject = subject.replace(' ', '%20')  # Encodage des espaces pour l'URL
-        url = f"https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=&su={subject}&body={body}"
+        """Ouvre un brouillon dans Gmail avec le sujet, le corps et le destinataire pré-remplis."""
+        recipient_email = load_email()  # Load the recipient email from the JSON file
+        body = body.replace('\n', '%0A')  # Encode line breaks for the URL
+        subject = subject.replace(' ', '%20')  # Encode spaces for the URL
+        url = f"https://mail.google.com/mail/?view=cm&fs=1&tf=1&to={recipient_email}&su={subject}&body={body}"
         webbrowser.open(url)
 
+    # Function to open Outlook with the recipient email pre-filled
     def open_outlook(self, subject, body):
-        """Ouvre un brouillon dans l'application de bureau Outlook avec le sujet et le corps pré-remplis."""
+        """Ouvre un brouillon dans l'application de bureau Outlook avec le sujet, le corps et le destinataire pré-remplis."""
         try:
+            recipient_email = load_email()  # Load the recipient email from the JSON file
             outlook = win32com.client.Dispatch("Outlook.Application")
             mail = outlook.CreateItem(0)  # 0 = olMailItem
             mail.Subject = subject
             mail.Body = body
-            mail.Display()  # Affiche le brouillon sans l'envoyer
+            mail.To = recipient_email  # Set the recipient email
+            mail.Display()  # Display the draft without sending it
         except Exception as e:
             logging.error(f"Erreur lors de l'ouverture d'Outlook : {e}")
             messagebox.showerror("Erreur", "Impossible d'ouvrir Outlook pour créer un brouillon.")
@@ -541,13 +596,13 @@ class FolderSelectorApp(ctk.CTk):
             self.open_outlook(email_subject, email_body)
 
     def toggle_email_client(self):
-        """Change le client de messagerie entre Gmail et Outlook."""
+        """Change le client de messagerie entre Gmail et Outlook et met à jour l'image du bouton."""
         if self.email_client == "Gmail":
             self.email_client = "Outlook"
-            self.email_client_button.configure(text="Outlook", fg_color="blue")
+            self.email_client_button.configure(image=self.outlook_image)
         else:
             self.email_client = "Gmail"
-            self.email_client_button.configure(text="Gmail", fg_color="red")
+            self.email_client_button.configure(image=self.gmail_image)
 
     def save_prefix(self):
         """Enregistre le préfixe dans la configuration."""
