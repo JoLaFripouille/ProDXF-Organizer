@@ -2,16 +2,28 @@ import os
 import sys
 import ezdxf
 import Dwg_To_Dxf
+import time
 
 def convert_dwg_to_dxf(dwg_file):
-    """Convertit un fichier DWG en DXF et enregistre le résultat dans 'tests/DXF'."""
+    """Convertit un fichier DWG en DXF et enregistre le résultat dans 'OutputDXF'."""
     try:
+        # Création du répertoire "OutputDXF" si nécessaire
         output_dir = os.path.abspath("OutputDXF")
         os.makedirs(output_dir, exist_ok=True)
+        
+        # Détermination du chemin du fichier DXF à sauvegarder dans "OutputDXF"
         dxf_file_path = os.path.join(output_dir, os.path.basename(dwg_file).replace('.dwg', '.dxf'))
+        
+        # Log pour vérifier le chemin du fichier DXF
+        print(f"Le fichier DXF sera sauvegardé dans : {dxf_file_path}")
+        
+        # Appel de la conversion DWG -> DXF
         Dwg_To_Dxf.convert(dwg_file, dxf_file_path)
+        
+        # Vérification que le fichier DXF a bien été créé
         if not os.path.isfile(dxf_file_path):
             raise FileNotFoundError(f"Le fichier DXF '{dxf_file_path}' n'a pas été créé.")
+        
         print(f"Conversion réussie : {dwg_file} -> {dxf_file_path}")
         return dxf_file_path
     except Exception as e:
@@ -122,11 +134,5 @@ def process_dwg(dwg_file, prefix, suffix):
     target_dir = determine_target_directory(dwg_file)
     existing_dxf_files = list_existing_dxf_files(os.path.dirname(dwg_file))
     extract_blocks(dxf_file_path, target_dir, prefix, suffix, existing_dxf_files)
+    time.sleep(4)
     clear_directory(os.path.dirname(dxf_file_path))
-
-# Exemple d'utilisation
-if __name__ == "__main__":
-    dwg_file = os.path.abspath("tests/DWG/des15487.dwg")  # Chemin du fichier DWG
-    prefix = "TL"  # Exemple de préfixe à utiliser
-    suffix = "DEV"  # Exemple de suffixe à utiliser
-    process_dwg(dwg_file, prefix, suffix)
