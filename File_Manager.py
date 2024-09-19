@@ -79,7 +79,7 @@ def delete_file_or_folder(subfolders_with_valid_dxf, subfolder_name, file_name=N
 # Exemple d'utilisation pour tester les fonctions (à commenter ou supprimer en production)
 if __name__ == "__main__":
     # Exemple de chemin du dossier principal à analyser
-    folder_path = "D:/PROJECT/AUTOCAD/Chantier/EIFFAGE/15183 TOLERIE/DXF"
+    folder_path = " "
     
     # Récupère les sous-dossiers avec des fichiers DXF valides
     subfolders_with_valid_dxf = get_subfolders_with_valid_dxf(folder_path)
