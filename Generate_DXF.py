@@ -1,17 +1,31 @@
+import Bloc_Decomposer as Bd
 import os
 import sys
 import ezdxf
-import Dwg_To_Dxf
+import Dwg_To_Dxf as DTDXF
+import time
+
 
 def convert_dwg_to_dxf(dwg_file):
-    """Convertit un fichier DWG en DXF et enregistre le résultat dans 'tests/DXF'."""
+    """Convertit un fichier DWG en DXF et enregistre le résultat dans 'OutputDXF'."""
     try:
+        # Création du répertoire "OutputDXF" si nécessaire
         output_dir = os.path.abspath("OutputDXF")
         os.makedirs(output_dir, exist_ok=True)
+        
+        # Détermination du chemin du fichier DXF à sauvegarder dans "OutputDXF"
         dxf_file_path = os.path.join(output_dir, os.path.basename(dwg_file).replace('.dwg', '.dxf'))
-        Dwg_To_Dxf.convert(dwg_file, dxf_file_path)
+        
+        # Log pour vérifier le chemin du fichier DXF
+        print(f"Le fichier DXF sera sauvegardé dans : {dxf_file_path}")
+        
+        # Appel de la conversion DWG -> DXF
+        DTDXF.convert(dwg_file, dxf_file_path)
+        
+        # Vérification que le fichier DXF a bien été créé
         if not os.path.isfile(dxf_file_path):
             raise FileNotFoundError(f"Le fichier DXF '{dxf_file_path}' n'a pas été créé.")
+        
         print(f"Conversion réussie : {dwg_file} -> {dxf_file_path}")
         return dxf_file_path
     except Exception as e:
@@ -44,6 +58,8 @@ def list_existing_dxf_files(dwg_dir):
     return existing_dxf_files
 
 def extract_blocks(input_dxf, target_dir, prefix, suffix, existing_dxf_files):
+    print(prefix)
+    print(suffix)
     """Extrait les blocs d'un fichier DXF qui respectent le préfixe et suffixe spécifiés et vérifie si déjà traités."""
     try:
         doc = ezdxf.readfile(input_dxf)
@@ -91,6 +107,9 @@ def extract_blocks(input_dxf, target_dir, prefix, suffix, existing_dxf_files):
                         new_msp.add_blockref(block_name, entity.dxf.insert)
                         new_doc.saveas(output_dxf)
                         print(f"Bloc '{clean_block_name}' extrait et enregistré dans {output_dxf}")
+
+                        # Appel de la fonction pour décomposer les blocs dans le fichier DXF extrait
+                        Bd.decompose_blocks_in_dxf(output_dxf)
                     except Exception as save_error:
                         print(f"Erreur lors de la sauvegarde du bloc '{clean_block_name}': {save_error}")
 
@@ -104,6 +123,7 @@ def extract_blocks(input_dxf, target_dir, prefix, suffix, existing_dxf_files):
 
     except Exception as e:
         print(f"Erreur lors du traitement du fichier DXF : {e}")
+
 
 def clear_directory(directory):
     """Supprime tous les fichiers du dossier spécifié."""
@@ -122,11 +142,5 @@ def process_dwg(dwg_file, prefix, suffix):
     target_dir = determine_target_directory(dwg_file)
     existing_dxf_files = list_existing_dxf_files(os.path.dirname(dwg_file))
     extract_blocks(dxf_file_path, target_dir, prefix, suffix, existing_dxf_files)
+    time.sleep(4)
     clear_directory(os.path.dirname(dxf_file_path))
-
-# Exemple d'utilisation
-if __name__ == "__main__":
-    dwg_file = os.path.abspath("tests/DWG/des15487.dwg")  # Chemin du fichier DWG
-    prefix = "TL"  # Exemple de préfixe à utiliser
-    suffix = "DEV"  # Exemple de suffixe à utiliser
-    process_dwg(dwg_file, prefix, suffix)
